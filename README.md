@@ -5,3 +5,5 @@
  免费数据库官网地址：<a href="https://www.ipip.net/" target="_blank">ipip.net</a>
  
  数据库最后更新日期2017-07-04
+
+ 支持Java1.7及以上版本

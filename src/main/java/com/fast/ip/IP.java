@@ -96,13 +96,13 @@ public final class IP {
 	 */
 	private static void load(final String fileName) {
 		try (InputStream is = getDefaultClassLoader().getResourceAsStream(fileName);
-				ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+				ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 			byte[] buff = new byte[1024];
 			int rc;
 			while ((rc = is.read(buff, 0, 1024)) > 0) {
-				baos.write(buff, 0, rc);
+				outputStream.write(buff, 0, rc);
 			}
-			byte[] data = baos.toByteArray();
+			byte[] data = outputStream.toByteArray();
 			ipData = data;
 			textOffset = byteArrayToInt(data, 0, true);
 			index = new int[256];
