@@ -4,27 +4,23 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * ipip.net 免费数据读取
- *
  * @author Luo Yong
  * @date 2017-03-12
  */
 public final class IP {
 
 	private static final Logger LOG = Logger.getLogger(IP.class.getName());
-
-	private static byte[] ipData;
-	private static int textOffset;
-	private static int[] index;
-	private static int[] indexData1;
-	private static int[] indexData2;
-	private static byte[] indexData3;
+	private static byte[] data;
+	private static long indexSize;
 	static {
-		load("dat/17monipdb.dat");
+		load("dat/17monipdb.datx");
+		indexSize = bytesToLong(data[0], data[1], data[2], data[3]);
 	}
 
 	private IP() {
@@ -34,35 +30,35 @@ public final class IP {
 	 * 根据ip地址获取国省市区县拼接的字符串
 	 */
 	public static String find(final String ip) {
-		return find(ipToByteArray(ip));
+		return find(ipToLong(ip));
 	}
 
 	/**
 	 * 根据ip地址对应的int值获取国省市区县拼接的字符串
 	 */
 	public static String find(final int address) {
-		return find(intToByteArray(address));
+		return find(intToLong(address));
 	}
 
 	/**
 	 * 根据ip地址获取国省市区县字符串数组
 	 */
 	public static String[] findArr(final String ip) {
-		return findArr(ipToByteArray(ip));
+		return findArr(ipToLong(ip));
 	}
 
 	/**
 	 * 根据ip地址对应的int值获取国省市区县字符串数组
 	 */
 	public static String[] findArr(final int address) {
-		return findArr(intToByteArray(address));
+		return findArr(intToLong(address));
 	}
 
 	/**
 	 * 返回国省市区县拼接的字符串
 	 */
-	private static String find(final byte[] ipBin) {
-		String[] arr = findArr(ipBin);
+	private static String find(final long val) {
+		String[] arr = findArr(val);
 		StringBuilder bud = new StringBuilder(arr[0]);
 		if (arr.length > 1) {
 			// 去除重复
@@ -78,17 +74,37 @@ public final class IP {
 	/**
 	 * 返回国省市区县字符串数组
 	 */
-	private static String[] findArr(final byte[] ipBin) {
-		int end = indexData1.length - 1;
-		int a = 0xff & ((int) ipBin[0]);
-		if (a != 0xff) {
-			end = index[a + 1];
+	private static String[] findArr(long val) {
+		int start = 262148;
+		int low = 0;
+		int mid = 0;
+		int high = new Long((indexSize - 262144 - 262148) / 9).intValue() - 1;
+		int pos = 0;
+		while (low <= high) {
+			mid = new Double((low + high) / 2).intValue();
+			pos = mid * 9;
+			long s = 0;
+			if (mid > 0) {
+				int pos1 = (mid - 1) * 9;
+				s = bytesToLong(data[start + pos1], data[start + pos1 + 1], data[start + pos1 + 2], data[start
+						+ pos1 + 3]);
+			}
+			long end = bytesToLong(data[start + pos], data[start + pos + 1], data[start + pos + 2], data[start
+					+ pos + 3]);
+			if (val > end) {
+				low = mid + 1;
+			} else if (val < s) {
+				high = mid - 1;
+			} else {
+				byte b = 0;
+				long off = bytesToLong(b, data[start + pos + 6], data[start + pos + 5], data[start + pos + 4]);
+				long len = bytesToLong(b, b, data[start + pos + 7], data[start + pos + 8]);
+				int offset = new Long(off - 262144 + indexSize).intValue();
+				byte[] loc = Arrays.copyOfRange(data, offset, offset + new Long(len).intValue());
+				return new String(loc, StandardCharsets.UTF_8).split("\t", -1);
+			}
 		}
-		long ip = (long) byteArrayToInt(ipBin, 0, true) & 0xffffffffL;
-		int idx = findIndexOffset(ip, index[a], end);
-		int off = indexData2[idx];
-		String str = new String(ipData, textOffset - 1024 + off, 0xff & (int) indexData3[idx], StandardCharsets.UTF_8);
-		return str.split("\t", -1);
+		return null;
 	}
 
 	/**
@@ -102,24 +118,7 @@ public final class IP {
 			while ((rc = is.read(buff, 0, 1024)) > 0) {
 				outputStream.write(buff, 0, rc);
 			}
-			byte[] data = outputStream.toByteArray();
-			ipData = data;
-			textOffset = byteArrayToInt(data, 0, true);
-			index = new int[256];
-			for (int i = 0; i < 256; i++) {
-				index[i] = byteArrayToInt(data, 4 + i * 4, false);
-			}
-			int idx = (textOffset - 4 - 1024 - 1024) / 8;
-			indexData1 = new int[idx];
-			indexData2 = new int[idx];
-			indexData3 = new byte[idx];
-			for (int i = 0, off; i < idx; i++) {
-				off = 4 + 1024 + i * 8;
-				indexData1[i] = byteArrayToInt(ipData, off, true);
-				indexData2[i] = ((int) ipData[off + 6] & 0xff) << 16 | ((int) ipData[off + 5] & 0xff) << 8
-						| ((int) ipData[off + 4] & 0xff);
-				indexData3[i] = ipData[off + 7];
-			}
+			data = outputStream.toByteArray();
 		} catch (IOException e) {
 			LOG.log(Level.WARNING, "IP 数据库加载出错：", e);
 		}
@@ -149,40 +148,13 @@ public final class IP {
 	}
 
 	/**
-	 * byte数组中取int数值
-	 */
-	private static int byteArrayToInt(final byte[] arr, final int offset, final boolean highBefore) {
-		if (highBefore) {
-			// 高位在前，低位在后
-			return ((arr[offset] & 0xFF) << 24) | ((arr[offset + 1] & 0xFF) << 16) | ((arr[offset + 2] & 0xFF) << 8)
-					| (arr[offset + 3] & 0xFF);
-		} else {
-			// 低位在前，高位在后
-			return ((arr[offset + 3] & 0xFF) << 24) | ((arr[offset + 2] & 0xFF) << 16)
-					| ((arr[offset + 1] & 0xFF) << 8) | (arr[offset] & 0xFF);
-		}
-	}
-
-	/**
-	 * 将int数值转换为占四个字节的byte数组，本方法适用于(高位在前，低位在后)的顺序
-	 */
-	private static byte[] intToByteArray(final int num) {
-		byte[] arr = new byte[4];
-		arr[0] = (byte) ((num >> 24) & 0xFF);
-		arr[1] = (byte) ((num >> 16) & 0xFF);
-		arr[2] = (byte) ((num >> 8) & 0xFF);
-		arr[3] = (byte) (num & 0xFF);
-		return arr;
-	}
-
-	/**
-	 * ip字符串转成byte数组
+	 * ip字符串转成long
 	 * @param ip 字符串ip
-	 * @return ip切割后的byte数组
+	 * @return ip切割后的byte数组，转成long
 	 */
-	private static byte[] ipToByteArray(final String ip) {
+	private static long ipToLong(final String ip) {
 		if (ip == null) {
-			return null;
+			return 0;
 		}
 		byte[] b = new byte[4];
 		int bIndex = 0;
@@ -215,25 +187,19 @@ public final class IP {
 		} else {
 			throw new RuntimeException("ip地址格式错误！");
 		}
-		return b;
+		return bytesToLong(b[0], b[1], b[2], b[3]);
 	}
 
-	private static int findIndexOffset(long ip, int start, int end) {
-		int mid;
-		while (start < end) {
-			mid = (start + end) / 2;
-			long l = 0xffffffffL & ((long) indexData1[mid]);
-			if (ip > l) {
-				start = mid + 1;
-			} else {
-				end = mid;
-			}
+	private static long bytesToLong(byte a, byte b, byte c, byte d) {
+		return intToLong((((a & 0xff) << 24) | ((b & 0xff) << 16) | ((c & 0xff) << 8) | (d & 0xff)));
+	}
+
+	private static long intToLong(int i) {
+		long l = i & 0x7fffffffL;
+		if (i < 0) {
+			l |= 0x080000000L;
 		}
-		long l = ((long) indexData1[end]) & 0xffffffffL;
-		if (l >= ip) {
-			return end;
-		}
-		return start;
+		return l;
 	}
 
 }
