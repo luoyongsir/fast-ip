@@ -78,10 +78,10 @@ public final class IP {
 		int start = 262148;
 		int low = 0;
 		int mid = 0;
-		int high = new Long((indexSize - 262144 - 262148) / 9).intValue() - 1;
+		int high = (int) (((indexSize - 262144 - 262148) / 9) - 1);
 		int pos = 0;
 		while (low <= high) {
-			mid = new Double((low + high) / 2).intValue();
+			mid = (low + high) / 2;
 			pos = mid * 9;
 			long s = 0;
 			if (mid > 0) {
@@ -99,12 +99,12 @@ public final class IP {
 				byte b = 0;
 				long off = bytesToLong(b, data[start + pos + 6], data[start + pos + 5], data[start + pos + 4]);
 				long len = bytesToLong(b, b, data[start + pos + 7], data[start + pos + 8]);
-				int offset = new Long(off - 262144 + indexSize).intValue();
-				byte[] loc = Arrays.copyOfRange(data, offset, offset + new Long(len).intValue());
+				int offset = (int) (off - 262144 + indexSize);
+				byte[] loc = Arrays.copyOfRange(data, offset, (int) (offset + len));
 				return new String(loc, StandardCharsets.UTF_8).split("\t", -1);
 			}
 		}
-		return null;
+		return new String[]{""};
 	}
 
 	/**
