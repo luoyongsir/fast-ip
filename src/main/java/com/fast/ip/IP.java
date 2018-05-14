@@ -9,7 +9,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * ipip.net 免费数据读取
+ * ipip.net 免费ip数据读取
  * @author Luo Yong
  * @date 2017-03-12
  */
