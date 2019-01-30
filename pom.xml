@@ -5,7 +5,7 @@
 
     <groupId>com.fast</groupId>
     <artifactId>fast-ip</artifactId>
-    <version>1.0.1-RELEASE</version>
+    <version>1.0.2-RELEASE</version>
     <packaging>jar</packaging>
     <name>fast-ip</name>
 
@@ -21,6 +21,9 @@
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>dat/ipipfree.ipdb</exclude>
+                </excludes>
             </resource>
         </resources>
     </build>
