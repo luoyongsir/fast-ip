@@ -1,12 +1,12 @@
 package com.fast.ip;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 
 /**
  * ipip.net 免费ip数据读取
@@ -17,12 +17,14 @@ import java.util.logging.Logger;
 public final class IP {
 
     private static final Logger LOG = Logger.getLogger(IP.class.getName());
-    private static byte[] data;
-    private static long indexSize;
+    private static int[] ipArr;
+    private static int[][] valArr;
+    private static String[] countryArr;
+    private static String[] regionArr;
+    private static String[] cityArr;
 
     static {
-        load("dat/17monipdb.datx");
-        indexSize = bytesToLong(data[0], data[1], data[2], data[3]);
+        load("dat/ipData.txt");
     }
 
     private IP() {
@@ -32,35 +34,14 @@ public final class IP {
      * 根据ip地址获取国省市区县拼接的字符串
      */
     public static String find(final String ip) {
-        return find(intToLong(ipToInt(ip)));
+        return find(CommUtil.ipToInt(ip));
     }
 
     /**
      * 根据ip地址对应的int值获取国省市区县拼接的字符串
      */
     public static String find(final int address) {
-        return find(intToLong(address));
-    }
-
-    /**
-     * 根据ip地址获取国省市区县字符串数组
-     */
-    public static String[] findArr(final String ip) {
-        return findArr(intToLong(ipToInt(ip)));
-    }
-
-    /**
-     * 根据ip地址对应的int值获取国省市区县字符串数组
-     */
-    public static String[] findArr(final int address) {
-        return findArr(intToLong(address));
-    }
-
-    /**
-     * 返回国省市区县拼接的字符串
-     */
-    private static String find(final long val) {
-        String[] arr = findArr(val);
+        String[] arr = findArr(address);
         StringBuilder bud = new StringBuilder(arr[0]);
         if (arr.length > 1) {
             // 去除重复
@@ -74,37 +55,25 @@ public final class IP {
     }
 
     /**
-     * 返回国省市区县字符串数组
+     * 根据ip地址获取国省市区县字符串数组
      */
-    private static String[] findArr(long val) {
-        int start = 262148;
-        int low = 0;
-        int mid = 0;
-        int high = (int) (((indexSize - 262144 - 262148) / 9) - 1);
-        int pos = 0;
-        while (low <= high) {
-            mid = (low + high) / 2;
-            pos = mid * 9;
-            long s = 0;
-            if (mid > 0) {
-                int pos1 = (mid - 1) * 9;
-                s = bytesToLong(data[start + pos1], data[start + pos1 + 1], data[start + pos1 + 2], data[start
-                    + pos1 + 3]);
-            }
-            long end = bytesToLong(data[start + pos], data[start + pos + 1], data[start + pos + 2], data[start
-                + pos + 3]);
-            if (val > end) {
-                low = mid + 1;
-            } else if (val < s) {
-                high = mid - 1;
-            } else {
-                byte b = 0;
-                long off = bytesToLong(b, data[start + pos + 6], data[start + pos + 5], data[start + pos + 4]);
-                long len = bytesToLong(b, b, data[start + pos + 7], data[start + pos + 8]);
-                int offset = (int) (off - 262144 + indexSize);
-                byte[] loc = Arrays.copyOfRange(data, offset, (int) (offset + len));
-                return new String(loc, StandardCharsets.UTF_8).split("\t", -1);
-            }
+    public static String[] findArr(final String ip) {
+        return findArr(CommUtil.ipToInt(ip));
+    }
+
+    /**
+     * 根据ip地址对应的int值获取国省市区县字符串数组
+     */
+    public static String[] findArr(final int address) {
+        int ind = Arrays.binarySearch(ipArr, address);
+        if (ind < 0) {
+            ind *= -1;
+            ind -= 2;
+        }
+
+        int[] indArr = valArr[ind];
+        if (indArr.length == 3) {
+            return new String[]{countryArr[indArr[0]], regionArr[indArr[1]], cityArr[indArr[2]]};
         }
         return new String[]{""};
     }
@@ -113,99 +82,77 @@ public final class IP {
      * 加载ip数据库
      */
     private static void load(final String fileName) {
-        try (InputStream is = getDefaultClassLoader().getResourceAsStream(fileName);
-             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            byte[] buff = new byte[1024];
-            int rc;
-            while ((rc = is.read(buff, 0, 1024)) > 0) {
-                outputStream.write(buff, 0, rc);
+        try (InputStream is = CommUtil.getDefaultClassLoader().getResourceAsStream(fileName);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+            String str;
+            int i = 0;
+            while ((str = reader.readLine()) != null) {
+                initData(i, str);
+                i++;
             }
-            data = outputStream.toByteArray();
         } catch (IOException e) {
             LOG.log(Level.WARNING, "IP 数据库加载出错：", e);
         }
     }
 
-    /**
-     * copy from org.springframework.util.ClassUtils
-     */
-    public static ClassLoader getDefaultClassLoader() {
-        ClassLoader cl;
-        try {
-            cl = Thread.currentThread().getContextClassLoader();
-        } catch (Exception ex) {
-            throw new RuntimeException(" Thread.currentThread() 获取 ClassLoader 出错：", ex);
+    private static void initData(int i, String s) {
+        if (s == null) {
+            return;
         }
-        if (cl == null) {
-            cl = IP.class.getClassLoader();
-            if (cl == null) {
-                try {
-                    cl = ClassLoader.getSystemClassLoader();
-                } catch (Exception ex) {
-                    throw new RuntimeException(" ClassLoader.getSystemClassLoader() 获取 ClassLoader 出错：", ex);
+        String str = unGZip(s);
+        String[] arr;
+        switch (i) {
+            case 0:
+                arr = str.split(",", -1);
+                ipArr = new int[arr.length];
+                for (int j = 0; j < arr.length; j++) {
+                    ipArr[j] = Integer.parseInt(arr[j]);
                 }
-            }
+                break;
+            case 1:
+                arr = str.split(",", -1);
+                valArr = new int[arr.length][];
+                for (int j = 0; j < arr.length; j++) {
+                    String[] temp = arr[j].split(";");
+                    valArr[j] = new int[temp.length];
+                    for (int k = 0; k < temp.length; k++) {
+                        valArr[j][k] = Integer.parseInt(temp[k]);
+                    }
+                }
+                break;
+            case 2:
+                countryArr = str.split(",", -1);
+                break;
+            case 3:
+                regionArr = str.split(",", -1);
+                break;
+            case 4:
+                cityArr = str.split(",", -1);
+                break;
+            default:
+                break;
         }
-        return cl;
     }
 
     /**
-     * ip字符串转成long
+     * 解压GZip
      *
-     * @param ip 字符串ip
-     * @return ip切割后的byte数组，转成long
+     * @return
      */
-    public static int ipToInt(final String ip) {
-        if (ip == null) {
-            return 0;
-        }
-        byte[] b = new byte[4];
-        int bIndex = 0;
-        // ip地址长度
-        int len = ip.length();
-        // 临时存储数字
-        int num = 0;
-        for (int i = 0; i < len; i++) {
-            char c = ip.charAt(i);
-            if (c == '.') {
-                if (num < 0 || num > 255) {
-                    throw new RuntimeException("ip数字错误！");
-                }
-                b[bIndex] = (byte) num;
-                bIndex++;
-                num = 0;
-            } else {
-                // char 转成数字
-                int tmp = c - '0';
-                if (tmp > -1 && tmp < 10) {
-                    num = (num * 10) + tmp;
-                } else {
-                    throw new RuntimeException("ip包含非法字符！");
-                }
+    private static String unGZip(final String input) {
+        byte[] inputBytes = Base64.getDecoder().decode(input);
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(inputBytes);
+             GZIPInputStream gzip = new GZIPInputStream(bis);
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            byte[] buf = new byte[1024];
+            int num = -1;
+            while ((num = gzip.read(buf, 0, buf.length)) != -1) {
+                bos.write(buf, 0, num);
             }
+            byte[] bytes = bos.toByteArray();
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new RuntimeException("ZIP 解压出错：", e);
         }
-        // ip必须包含3个"." 并且ip的最后位必须大于等于0小于256
-        if (bIndex == 3 && num > -1 && num < 256) {
-            b[bIndex] = (byte) num;
-        } else {
-            throw new RuntimeException("ip地址格式错误！");
-        }
-        return bytesToInt(b[0], b[1], b[2], b[3]);
-    }
-
-    private static long bytesToLong(byte a, byte b, byte c, byte d) {
-        return intToLong(bytesToInt(a, b, c, d));
-    }
-
-    private static int bytesToInt(byte a, byte b, byte c, byte d) {
-        return ((a & 0xff) << 24) | ((b & 0xff) << 16) | ((c & 0xff) << 8) | (d & 0xff);
-    }
-
-    private static long intToLong(int i) {
-        long l = i & 0x7fffffffL;
-        if (i < 0) {
-            l |= 0x080000000L;
-        }
-        return l;
     }
 }
