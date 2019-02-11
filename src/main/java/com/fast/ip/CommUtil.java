@@ -17,7 +17,7 @@ public class CommUtil {
             throw new RuntimeException(" Thread.currentThread() 获取 ClassLoader 出错：", ex);
         }
         if (cl == null) {
-            cl = IPOld.class.getClassLoader();
+            cl = CommUtil.class.getClassLoader();
             if (cl == null) {
                 try {
                     cl = ClassLoader.getSystemClassLoader();
@@ -72,7 +72,6 @@ public class CommUtil {
         }
         return bytesToInt(b[0], b[1], b[2], b[3]);
     }
-
 
     public static int bytesToInt(byte a, byte b, byte c, byte d) {
         return ((a & 0xff) << 24) | ((b & 0xff) << 16) | ((c & 0xff) << 8) | (d & 0xff);
