@@ -27,9 +27,6 @@ public final class IP {
         load("dat/ipData.txt");
     }
 
-    private IP() {
-    }
-
     /**
      * 根据ip地址获取国省市区县拼接的字符串
      */
@@ -154,5 +151,8 @@ public final class IP {
         } catch (Exception e) {
             throw new RuntimeException("ZIP 解压出错：", e);
         }
+    }
+
+    private IP() {
     }
 }

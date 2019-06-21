@@ -4,7 +4,7 @@ package com.fast.ip;
  * @author Luo Yong
  * @date 2017-03-12
  */
-public class CommUtil {
+public final class CommUtil {
 
     /**
      * copy from org.springframework.util.ClassUtils
@@ -77,4 +77,6 @@ public class CommUtil {
         return ((a & 0xff) << 24) | ((b & 0xff) << 16) | ((c & 0xff) << 8) | (d & 0xff);
     }
 
+    private CommUtil() {
+    }
 }
