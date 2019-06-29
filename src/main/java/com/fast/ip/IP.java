@@ -96,7 +96,7 @@ public final class IP {
         if (s == null) {
             return;
         }
-        String str = unGZip(s);
+        String str = unGzip(s);
         String[] arr;
         switch (i) {
             case 0:
@@ -136,7 +136,7 @@ public final class IP {
      *
      * @return
      */
-    private static String unGZip(final String input) {
+    private static String unGzip(final String input) {
         byte[] inputBytes = Base64.getDecoder().decode(input);
         try (ByteArrayInputStream bis = new ByteArrayInputStream(inputBytes);
              GZIPInputStream gzip = new GZIPInputStream(bis);
