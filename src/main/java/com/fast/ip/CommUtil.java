@@ -30,30 +30,32 @@ public final class CommUtil {
     }
 
     /**
-     * ip字符串转成long
+     * ip字符串转成int
      *
      * @param ip 字符串ip
-     * @return ip切割后的byte数组，转成long
+     * @return ip切割后的byte数组，转成int
      */
     public static int ipToInt(final String ip) {
+        int result = 0;
         if (ip == null) {
-            return 0;
+            return result;
         }
-        byte[] b = new byte[4];
-        int bIndex = 0;
+
         // ip地址长度
         int len = ip.length();
         // 临时存储数字
         int num = 0;
+        // 点号间256进制
+        int offset = 24;
         for (int i = 0; i < len; i++) {
             char c = ip.charAt(i);
             if (c == '.') {
                 if (num < 0 || num > 255) {
                     throw new RuntimeException("ip数字错误！");
                 }
-                b[bIndex] = (byte) num;
-                bIndex++;
+                result += (num << offset);
                 num = 0;
+                offset -= 8;
             } else {
                 // char 转成数字
                 int tmp = c - '0';
@@ -64,17 +66,15 @@ public final class CommUtil {
                 }
             }
         }
+
         // ip必须包含3个"." 并且ip的最后位必须大于等于0小于256
-        if (bIndex == 3 && num > -1 && num < 256) {
-            b[bIndex] = (byte) num;
+        if (offset == 0 && num > -1 && num < 256) {
+            result += num;
         } else {
             throw new RuntimeException("ip地址格式错误！");
         }
-        return bytesToInt(b[0], b[1], b[2], b[3]);
-    }
 
-    public static int bytesToInt(byte a, byte b, byte c, byte d) {
-        return ((a & 0xff) << 24) | ((b & 0xff) << 16) | ((c & 0xff) << 8) | (d & 0xff);
+        return result;
     }
 
     private CommUtil() {
