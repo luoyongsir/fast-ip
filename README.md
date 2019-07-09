@@ -6,6 +6,6 @@
  
  免费数据库官网地址：<a href="https://www.ipip.net/" target="_blank">ipip.net</a>
  
- 数据库最后更新 2019 年 1 月
+ 数据库最后更新 2019 年 7 月
 
- 支持Java1.8及以上版本
+ 支持Java1.7及以上版本
