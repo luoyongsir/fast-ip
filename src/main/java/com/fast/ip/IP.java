@@ -59,10 +59,13 @@ public final class IP {
     }
 
     /**
+     * binarySearch的插入点值：就是第一个比关键字大的元素在数组中的位置索引，而且这个位置索引从1开始
+     * <p>
      * 根据ip地址对应的int值获取国省市区县字符串数组
      */
     public static String[] findArr(final int address) {
         int ind = Arrays.binarySearch(ipArr, address);
+        // 如果返回值为负的插入点值，ind取值为插入点值减2
         if (ind < 0) {
             ind *= -1;
             ind -= 2;
@@ -71,6 +74,10 @@ public final class IP {
         int[] indArr = valArr[ind];
         if (indArr.length == 3) {
             return new String[]{countryArr[indArr[0]], regionArr[indArr[1]], cityArr[indArr[2]]};
+        } else if (indArr.length == 2) {
+            return new String[]{countryArr[indArr[0]], regionArr[indArr[1]]};
+        } else if (indArr.length == 1) {
+            return new String[]{countryArr[indArr[0]]};
         }
         return new String[]{""};
     }
